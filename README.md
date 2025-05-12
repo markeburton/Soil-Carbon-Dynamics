@@ -25,6 +25,7 @@ Resources
 The code in this repository is built from the original SNAP and SNAPGRAZE models published in:
 
 Ritchie ME (2014) Plant compensation to grazing and soil carbon dynamics in a tropical grassland. PeerJ. 2:e233 
+
 Ritchie ME (2020) Grazing management, forage production and soil carbon dynamics. Resources. 9(4):49
 
 Contact
