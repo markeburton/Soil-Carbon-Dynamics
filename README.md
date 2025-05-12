@@ -7,12 +7,11 @@ SNAP v1.0 is a mass balance model originally published in Ritchie (2014) using f
 
 SNAPGRAZE v.1.0 builds from SNAP by explicitly accounting for management options. This new aspect was addded by incorporating an Episodic Herbivory Model (EHM) tracking plant growth prior to, during, and following grazing events. SNAPGRAZE v1.0 introduces several new input variables: mean annual temperature, a correction factor for systems dominated by annuals or shrubs (APC), maximim relative growth rate (rgr), soil sampling depth, and a series of grazing pattern parameters (period of stay, time prior to grazing episode, number of animals and pastures in the grazing system, mean mass of the grazing animals, and an optional value to specify the default daily consumption per animal. 
 
-
-Documentation of model parameter, inputs, and calibration changes in models
+## Documentation of model parameter, inputs, and calibration changes in models
 
 The currently available code is described below, with additional models scheduled to be added. 
 
-SNAPGRAZE v2.3
+### SNAPGRAZE v2.3
 1. The original SNAPGRAZE model has been updated with new parameter coefficients and allows for calibration to fit a specific project area.
   New updates to SNAPGRAZE v1.0 include inputs for the dominant vegetation class (bare, annuals, perennials, mixture, or forbs) to replace the plant lignin and cellulose percentage and       APC. Similiarly, the number of rotations in a grazing system is an input that replaces the period of stay and time prior to a grazing episode.  The SNAPGRAZE v2.3 also allows for           calibrations to be used to update parameter coeffiecents related to microbial respiration and acvtivity (relateded to days with sufficient soil moisture). 
    
@@ -20,7 +19,7 @@ SNAPGRAZE v2.3
 
 
 
-Resources
+## Resources
 
 The code in this repository is built from the original SNAP and SNAPGRAZE models published in:
 
@@ -29,7 +28,7 @@ Ritchie ME (2014) Plant compensation to grazing and soil carbon dynamics in a tr
 Ritchie ME (2020) Grazing management, forage production and soil carbon dynamics. Resources. 9(4):49
 
 
-Contact
+## Contact
 
 Mark Burton
 
@@ -44,7 +43,7 @@ Email: markritchie@soilsfuture.com
 Soils for the Future; CarbonSolve
 
 
-License
+## License
 
 GNU GENERAL PUBLIC LICENSE v3
 
