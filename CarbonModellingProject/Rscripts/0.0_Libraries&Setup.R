@@ -7,8 +7,6 @@ library(tidyverse)
 library(inTextSummaryTable)
 library(Hmisc)
 
-#library(drcarlate)
-
 #### Directories
 
 #Fill in Project Name to be used in output files names. 
