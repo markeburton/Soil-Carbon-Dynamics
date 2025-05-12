@@ -5,11 +5,14 @@ This repository includes R code for SNAP (Ritchie 2014) and SNAPGRAZE (Ritchie 2
 
 SNAP v1.0 is a mass balance model originally published in Ritchie (2014) using field data collected in Serengeti National Park, Tanzania to predict soil carbon dynamics in a tropical grassland in response to variations in grazing intensity. It examines the response of leaf area index (LAI) to a gradient of grazing intensities. SNAP v1.0 includes five input variables: mean annual precipitation, fire frequency, percent sand, mean proportion of plant as lignin and cellulose, and grazing intensity. 
 
-SNAPGRAZE v.1.0 builds from SNAP by explicitly accounting for management options. This new aspect was added by incorporating an Episodic Herbivory Model (EHM) tracking plant growth prior to, during, and following grazing events. SNAPGRAZE v1.0 introduces several new input variables: mean annual temperature, a correction factor for systems dominated by annuals or shrubs (APC), maximum relative growth rate (rgr), soil sampling depth, and a series of grazing pattern parameters (period of stay, time prior to grazing episode, number of animals and pastures in the grazing system, mean mass of the grazing animals, and an optional value to specify the default daily consumption per animal. 
+SNAPGRAZE v1.0 builds from SNAP by explicitly accounting for management options. This new aspect was added by incorporating an Episodic Herbivory Model (EHM) tracking plant growth prior to, during, and following grazing events. SNAPGRAZE v1.0 introduces several new input variables: mean annual temperature, a correction factor for systems dominated by annuals or shrubs (APC), maximum relative growth rate (rgr), soil sampling depth, and a series of grazing pattern parameters (period of stay, time prior to grazing episode, number of animals and pastures in the grazing system, mean mass of the grazing animals, and an optional value to specify the default daily consumption per animal. 
 
 ## Documentation of model parameter, inputs, and calibration changes in models
 
 The currently available code is described below, with additional models scheduled to be added. 
+
+### 0.0 Libraries&Setup 
+This code includes the R libraries required in the code and sets up the input and output folder directory.  The parent directory should be set to the file pathway where your project is located. 
 
 ### SNAPGRAZE v2.3
 1. The original SNAPGRAZE model has been updated with new parameter coefficients and allows for calibration to fit a specific project area.
