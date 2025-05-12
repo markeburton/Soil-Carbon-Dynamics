@@ -1,7 +1,7 @@
 # Soil-Carbon-Dynamics
 CarbonSolve 
 
-This repository includes R code for SNAP (Ritchie 2014) and SNPGRAZE (Ritchie 2020) soil carbon models allowing for undated functionality, customizability, and  additional calculations. 
+This repository includes R code for SNAP (Ritchie 2014) and SNPGRAZE (Ritchie 2020) soil carbon models with additional versions allowing for updated functionality, customizability, and  additional calculations. 
 
 SNAP v1.0 is a mass balance model originally published in Ritchie (2014) using field data collected in Serengeti National Park, Tanzania to predict soil carbon dynamics in a tropical grassland in response to variations in grazing intensity. It examines the response of leaf area index (LAI) to a gradient of grazing intensities. SNAP v1.0 includes five input variables: mean annual precipitation, fire frequency, percent sand, mean proportion of plant as lignin and cellulose, and grazing intensity. 
 
