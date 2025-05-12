@@ -28,15 +28,21 @@ Ritchie ME (2014) Plant compensation to grazing and soil carbon dynamics in a tr
 
 Ritchie ME (2020) Grazing management, forage production and soil carbon dynamics. Resources. 9(4):49
 
+
 Contact
 
 Mark Burton
+
 Email: mark.burton@briwildlife.org
+
 Biodiversity Research Institute; CarbonSolve
 
 Mark Ritchie 
+
 Email: markritchie@soilsfuture.com
+
 Soils for the Future; CarbonSolve
+
 
 License
 
