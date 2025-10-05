@@ -4,10 +4,11 @@
 
 # script metadata ==========================================================================================
 # Description: 
-    # This version of SNAPGRAZE is based on the Rithie et al. (2020) manuscript. 
+    # This version of SNAPGRAZE is based on the Rithie et al. (2020) manuscript and updated with coefficients from
+    # the Calibration using a subset of KRCP data in the `KRCP Carbon Calculations v6 Sept 22 2025.xlsx` calibration tab.
     # Citation: Ritchie ME (2020) Grazing management, forage production and soil carbon dynamics. Resources 9(4): 49
 # Script Author: Mark Burton
-# Script Date (last update): 2025-04-11
+# Script Date (last update): 2025-10-03
 # ====================================================================================================
 
 # Version 2.3 has several important changes to SNAPGRAZE v2.0
@@ -20,13 +21,13 @@
 
 
 # * Coeff.Resp.Temp: Default is 0.94198
-Coeff.Resp.Temp <-	0.91  # From Calibration tab is Carbon Calculation Spreadsheet.
+Coeff.Resp.Temp <-	0.685  # From Calibration tab is Carbon Calculation Spreadsheet.
 # * Coeff.wetsoil: default is 0.00043
-Coeff.wetsoil   <- 0.00051 # From Calibration tab in Carbon Calculation Spreadsheet.
+Coeff.wetsoil   <- 0.000415 # From Calibration tab in Carbon Calculation Spreadsheet.
 # * Coeff_Respiration: default is 0.00044
-Coeff_Respiration <- 0.0005 # From Calibration tab in Carbon Calculation Spreadsheet.
+Coeff_Respiration <-0.000415 # From Calibration tab in Carbon Calculation Spreadsheet.
 # RGRmax - This is a required input in the input file, so changing here will not impact calculations
-# * 0.033 used here but default is 0.036
+# * 0.035 used here but default is 0.036
 
 
 
@@ -43,11 +44,12 @@ dim(SnapGrazeInputs)
 SNAPGRAZEv2.3 = function(SnapGrazeInputs) {
   
   #Now, lets define the parameters for use in the model.
+  Site                  <-  SnapGrazeInputs$"Site"
   YEARS                 <-  SnapGrazeInputs$"Years"[1] + 10        # How long will be project last in years [40 is default] -- Added an extra 10 years beyond project to look at kback calculation 
   SOC.measured          <-  SnapGrazeInputs$"SOC.measured"         # SOC data for the points - model will accrue SOC using this as the starting point under Project scenarios
   A                     <-  SnapGrazeInputs$"Project Area"         # Size of the area that will be in the project.
   # Environmental
-  FIRE.base             <-  SnapGrazeInputs$"FIRE.base"            # This is a fire frequency (number of fires per year (0-1)) in the baseline scenario
+  FIRE.curr            <-  SnapGrazeInputs$"FIRE.curr"            # This is a fire frequency (number of fires per year (0-1)) in the baseline scenario
   FIRE.project          <-  SnapGrazeInputs$"FIRE.project"         # This allows for a reduction in fire freq based on project scenarios.
   MAT                   <-  SnapGrazeInputs$"MAT"                  # Mean Annual Temperature
   MAP                   <-  SnapGrazeInputs$"MAP"                  # Mean Annual Precipitation
@@ -59,19 +61,21 @@ SNAPGRAZEv2.3 = function(SnapGrazeInputs) {
   DEPTH                 <-  SnapGrazeInputs$"DEPTH"                # Depth we are using for calculations 
   # Grazing Information
   W                     <-  SnapGrazeInputs$"W" 
-  N.base                <-  SnapGrazeInputs$"Animals.base"         # Number of animals in the baseline scenario
-  n.base                <-  SnapGrazeInputs$"Pasture.base"         # Number of pastures in the baseline scenario
-  ROTATIONS.base        <-  SnapGrazeInputs$"Rotations.base"       # Number of rotations in the baseline scenario
+  N.curr                <-  SnapGrazeInputs$"Animals.curr"         # Number of animals in the current scenario
+  n.curr                <-  SnapGrazeInputs$"Pasture.curr"         # Number of pastures in the current scenario
+  ROTATIONS.curr       <-  SnapGrazeInputs$"Rotations.curr"       # Number of rotations in the current scenario
   N.project             <-  SnapGrazeInputs$"Animals.project"      # Number of animals in the project scenario
   n.project             <-  SnapGrazeInputs$"Pasture.project"      # Number of pastures in the project scenario
   ROTATIONS.project     <-  SnapGrazeInputs$"Rotations.project"    # Number of rotations in the project scenario
   
+  #### Snapgraze Calculations ####
+  
+  #### * Calibration with current condition ####
   #### First, use the BASELINE DATA to predict SOC for each point
   # Starts with Episodic Herbivory Model (EHM)
   # Equation 15 from Richie et al. 2020 - Calculate annual aboveground production in absence of grazing (ANPPmax)
   # 0.00834 kJ mol/k is the gas constant
   ANPPmax =  exp(12.039 + (0.718*log(MAP)) - (25.18 / (0.00834 * (273.15 + MAT)))) * (1.33 - (0.0075 * SAND))
-  
   # Biomass in the absence of grazing (Sk)  g^m2 year^-1
   # 0.9 is a slight correction is better match the data from Serengeti - it can calibrated to better match exclosure experiments for a given system
   # Published version of SNAPGRAZE used a 0.9 correction factor - This is removed in the default but you can calibrate to better match exclosure experiments for a given system
@@ -84,28 +88,28 @@ SNAPGRAZEv2.3 = function(SnapGrazeInputs) {
   # Biomass at the onset of the growing season, produced from resource reserves
   S0 = Sk * 0.1
   # Stocking density (animals per ha)
-  d = (N.base/A) 
+  d = (N.curr/A) 
   # L0
   L0 = (Cg /2) * (365 - G) * d * 10^(-4)
   # Period of stay
-  D  = G / (n.base * ROTATIONS.base)
-  D2 = ifelse(ROTATIONS.base >= 2,  D, 0)
-  D3 = ifelse(ROTATIONS.base >= 3, D2, 0)
-  D4 = ifelse(ROTATIONS.base >= 4, D3, 0)
+  D  = G / (n.curr * ROTATIONS.curr)
+  D2 = ifelse(ROTATIONS.curr >= 2,  D, 0)
+  D3 = ifelse(ROTATIONS.curr >= 3, D2, 0)
+  D4 = ifelse(ROTATIONS.curr >= 4, D3, 0)
   # Time prior to grazing episode
-  E = (G-ROTATIONS.base*D)/(2*ROTATIONS.base)
+  E = (G-ROTATIONS.curr*D)/(2*ROTATIONS.curr)
   # Days from end of grazing period of stay to end of the growing season
-  Fd = ifelse(ROTATIONS.base >= 2, 2*E, E)
-  F2 = ifelse(ROTATIONS.base == 2, Fd/ROTATIONS.base, ifelse(ROTATIONS.base >= 3, Fd, 0))
-  F3 = ifelse(ROTATIONS.base == 3, E, ifelse(ROTATIONS.base > 3, 2*E, 0))
-  F4 = ifelse(ROTATIONS.base >= 4, G-E-D-F1-D2-F2-D3-F3-D4,0)
-
+  Fd = ifelse(ROTATIONS.curr >= 2, 2*E, E)
+  F2 = ifelse(ROTATIONS.curr == 2, Fd/ROTATIONS.curr, ifelse(ROTATIONS.curr >= 3, Fd, 0))
+  F3 = ifelse(ROTATIONS.curr == 3, E, ifelse(ROTATIONS.curr > 3, 2*E, 0))
+  F4 = ifelse(ROTATIONS.curr >= 4, G-E-D-F1-D2-F2-D3-F3-D4,0)
+  
   # Biomass at start of grazing episode
   Se = (Sk * S0) / ((Sk * exp(-r * E)) + S0 * (1 - exp(-r * E)))
-  # Relative loss rate of biomass to grazing 
-  g = (d * Cg * n.base * 10^(-4)) / Se
+  # Relative loss rate of biomass to grazing: pbLoss
+  g = (d * Cg * n.curr * 10^(-4)) / Se
   # Biomass removed during grazing period of stay.
-  Lg = D * d * Cg * n.base * 10^(-4)
+  Lg = D * d * Cg * n.curr * 10^(-4)
   # Biomass at end of grazing episode
   Sg = ((Sk * Se) / ((Sk * exp((-r + g ) * D)) + (Se * (1-exp((-r + g )*D)))))
   # Biomass at end of growing season
@@ -125,7 +129,11 @@ SNAPGRAZEv2.3 = function(SnapGrazeInputs) {
   ProdG = ifelse(Sg>Se, Sf-S0, Se-S0+Se2-Sg+Se3-Sg2+Se4-Sg3+Sf-Sg4)
   
   # We now need to calculate a new annual correction factor for BNPP
-  BNPP.Correction = ifelse(VEGCLASS == "ANNUALS", 0.291179866899812, ifelse(VEGCLASS == "BARE", 0.291179866899812, ifelse(VEGCLASS == "MIXTURE", 0.645589933449906, 1)))
+  # Manually set a few sites to 0 for BNPP 
+  BNPP.Correction =  ifelse(VEGCLASS == "ANNUALS", 0.285325722731738,
+                                  ifelse(VEGCLASS == "BARE", 0.285325722731738, 
+                                         ifelse(VEGCLASS == "MIXTURE", 0.642662861365869, 1)))
+  
 
   # Annual aboveground production under grazing
   ANPPest = ProdG * BNPP.Correction
@@ -140,11 +148,107 @@ SNAPGRAZEv2.3 = function(SnapGrazeInputs) {
   
   # Soil Organic Carbon (SOC) calculations.
   # Calculate mean proportion of plant as lignin and cellulose using dominant vegetation class.
-  LIGCELL = ifelse(VEGCLASS == "ANNUALS", 23.248751199377, ifelse(VEGCLASS == "BARE", 23.248751199377, ifelse(VEGCLASS == "MIXTURE", 29.4626011324048, 35.6764510654327)))
+  LIGCELL = ifelse(VEGCLASS == "ANNUALS", 22.7194872121575, ifelse(VEGCLASS == "BARE", 22.7194872121575, ifelse(VEGCLASS == "MIXTURE", 29.1979691387951, 35.6764510654327)))
   # Plant-derived soil carbon input in year y
-  PDSOC.base = (0.45 * (((LIGCELL/100) * ANPPest * (1 - FIRE.base)) + (((LIGCELL/100) + 0.05) * BNPPest))) * (-0.3559+0.3914 * log(DEPTH))
+  PDSOC.calib = (0.45 * (((LIGCELL/100) * ANPPest * (1 - FIRE.curr)) + (((LIGCELL/100) + 0.05) * BNPPest))) * (-0.3914+0.3559*log(DEPTH))
   # Dung-derived soil carbon input in year y
-  DDSOC.base = ((LIGCELL/100) * (CONSUMED + CONSUMED.OFF) * 0.45 * (0.4718 - 0.0009*(D))) * (-0.3559+0.3914* log(DEPTH))
+  DDSOC.calib = ((LIGCELL/100) * (CONSUMED + CONSUMED.OFF) * 0.45 * (0.4718 - 0.0009*(D))) * (-0.3914+0.3559*log(DEPTH))
+  
+  # WETDAYS (eq 19) 
+  WETDAYS = (Coeff.wetsoil * MAP - 0.025) * G
+  
+  # SOCeq
+  SOCeq.large.calib  = (((PDSOC.calib+DDSOC.calib) / (WETDAYS * (0.7 + 0.3 *(SAND/100)) * Coeff_Respiration)) + (0.579/Coeff_Respiration)) / 100    
+  SOCeq.small.calib  = ((PDSOC.calib+DDSOC.calib) / (WETDAYS * (0.7+0.3*(SAND/100)) * exp(-10.872)))^(1/1.296) / 100  
+  SOCeq.calib        =  pmin(SOCeq.large.calib, SOCeq.small.calib, na.rm = TRUE)
+  SOC.dev.calib      =  SOC.measured - SOCeq.calib
+  
+  #### * Conservative Baseline ####
+  #### First, use the BASELINE DATA to predict SOC for each point
+  # Starts with Episodic Herbivory Model (EHM)
+  # Equation 15 from Richie et al. 2020 - Calculate annual aboveground production in absence of grazing (ANPPmax)
+  # 0.00834 kJ mol/k is the gas constant
+  ANPPmax =  exp(12.039 + (0.718*log(MAP)) - (25.18 / (0.00834 * (273.15 + MAT)))) * (1.33 - (0.0075 * SAND))
+
+  # Biomass in the absence of grazing (Sk)  g^m2 year^-1
+  # 0.9 is a slight correction is better match the data from Serengeti - it can calibrated to better match exclosure experiments for a given system
+  # Published version of SNAPGRAZE used a 0.9 correction factor - This is removed in the default but you can calibrate to better match exclosure experiments for a given system
+  ANPP.Correction = 1.0  #enter 0.9 to match published version. 
+  Sk = (ANPPmax/ANPP.Correction)
+  # Length of plant growing season
+  G = (22.993 * MAT) - (Coeff.Resp.Temp * MAT^2) + (0.073 * MAP)
+  # Per Animal Daily Consumption
+  Cg =  2 * (5300 + 770*log(W))
+  # Biomass at the onset of the growing season, produced from resource reserves
+  S0 = Sk * 0.1
+  # Stocking density (animals per ha) 
+  # Stocking denisty for project scenario
+  d = ((N.project/1.5)/A) 
+  # L0
+  L0 = (Cg /2) * (365 - G) * d * 10^(-4)
+  # Period of stay
+  #Rotation and pasture of calibration/current
+  D  = G / (n.curr * ROTATIONS.curr)
+  D2 = ifelse(ROTATIONS.curr >= 2,  D, 0)
+  D3 = ifelse(ROTATIONS.curr >= 3, D2, 0)
+  D4 = ifelse(ROTATIONS.curr >= 4, D3, 0)
+  # Time prior to grazing episode
+  E = (G-ROTATIONS.curr*D)/(2*ROTATIONS.curr)
+  # Days from end of grazing period of stay to end of the growing season
+  Fd = ifelse(ROTATIONS.curr >= 2, 2*E, E)
+  F2 = ifelse(ROTATIONS.curr == 2, Fd/ROTATIONS.curr, ifelse(ROTATIONS.curr >= 3, Fd, 0))
+  F3 = ifelse(ROTATIONS.curr == 3, E, ifelse(ROTATIONS.curr > 3, 2*E, 0))
+  F4 = ifelse(ROTATIONS.curr >= 4, G-E-D-F1-D2-F2-D3-F3-D4,0)
+
+  # Biomass at start of grazing episode
+  Se = (Sk * S0) / ((Sk * exp(-r * E)) + S0 * (1 - exp(-r * E)))
+  # Relative loss rate of biomass to grazing 
+  g = (d * Cg * n.curr * 10^(-4)) / Se
+  # Biomass removed during grazing period of stay.
+  Lg = D * d * Cg * n.curr * 10^(-4)
+  # Biomass at end of grazing episode
+  Sg = ((Sk * Se) / ((Sk * exp((-r + g ) * D)) + (Se * (1-exp((-r + g )*D)))))
+  # Biomass at end of growing season
+  Sf = (Sk * Sg) / ((Sk * exp(-(r * Fd))) + Sg * (1 - exp(-(r * Fd))))
+  #
+  Se2 = (Sk*Sg) / (Sk * exp((-r)*Fd) +Sg  *(1 - exp((-r) * Fd)))
+  Sg2 = (Sk*Se2)/ (Sk*exp((-r+g)*D2) +Se2 *(1 - exp((-r + g) * D2)))
+  Se3 = (Sk*Sg2)/ (Sk*exp((-r) * F2)+Sg2 *(1 - exp((-r) * F2)))
+  Sg3 = (Sk*Se3)/ (Sk*exp((-r+g)*D3) +Se3 *(1 - exp((-r + g) * D3)))
+  Se4 = (Sk*Sg3)/ (Sk*exp((-r)  *F3)+Sg3 *(1 - exp((-r) * F3)))
+  Sg4 = (Sk*Se4)/ (Sk*exp((-r+g)*D4) +Se4 *(1 - exp((-r + g) * D4)))
+  # Consumption calculations (including off season consumption)
+  CONSUMED = Cg*d*(D)*10^-4
+  CONSUMED.OFF = ifelse(L0 < Se2, L0, Se2)
+  
+  # ANPP intermediate calculation
+  ProdG = ifelse(Sg>Se, Sf-S0, Se-S0+Se2-Sg+Se3-Sg2+Se4-Sg3+Sf-Sg4)
+  
+  # We now need to calculate a new annual correction factor for BNPP
+  # Manually set a few sites to 0 for BNPP 
+  BNPP.Correction =  ifelse(VEGCLASS == "ANNUALS", 0.285325722731738,
+                            ifelse(VEGCLASS == "BARE", 0.285325722731738, 
+                                   ifelse(VEGCLASS == "MIXTURE", 0.642662861365869, 1)))
+  
+  # Annual aboveground production under grazing
+  ANPPest = ProdG * BNPP.Correction
+  
+  # Other Productivity Calculations
+  # Annual belowground productivity under grazing
+  # Increase in biomass from initial amount (S0) to a biomass Sk after G days
+  Pu = Sk - S0
+  
+  # Equation 16 - Annual below ground productivity under grazing
+  BNPPest = ((0.602 * MAP) - (0.00038 * MAP^2) + (5.888 * MAT)) * (ANPPest/ANPPmax) * BNPP.Correction
+  
+  # Soil Organic Carbon (SOC) calculations.
+  # Calculate mean proportion of plant as lignin and cellulose using dominant vegetation class.
+  LIGCELL = ifelse(VEGCLASS == "ANNUALS", 22.7194872121575, ifelse(VEGCLASS == "BARE", 22.7194872121575, ifelse(VEGCLASS == "MIXTURE", 29.1979691387951, 35.6764510654327)))
+  # Plant-derived soil carbon input in year y
+  PDSOC.base = (0.45 * (((LIGCELL/100) * ANPPest * (1 - FIRE.curr)) + (((LIGCELL/100) + 0.05) * BNPPest))) * (-0.3914+0.3559*log(DEPTH))
+  # Dung-derived soil carbon input in year y
+  DDSOC.base = ((LIGCELL/100) * (CONSUMED + CONSUMED.OFF) * 0.45 * (0.4718 - 0.0009*(D))) * (-0.3914+0.3559*log(DEPTH))
+  
   
   # WETDAYS (eq 19) 
   WETDAYS = (Coeff.wetsoil * MAP - 0.025) * G
@@ -155,12 +259,11 @@ SNAPGRAZEv2.3 = function(SnapGrazeInputs) {
   SOCeq.base        =  pmin(SOCeq.large.base, SOCeq.small.base, na.rm = TRUE)
   
   
-
+  #### * Project Scenario ####
   ####
   #### Next, use PROJECT parameters to predict SOC for each point 
   ####
   # Per Animal Daily Consumption
-  Cg = ifelse(is.numeric(Cg), Cg, 2 * (5300 + 770*log(W)))
   Cg = ifelse(is.numeric(Cg), Cg, 2 * (5300 + 770*log(W)))
   #Stocking density (animals per ha)
   d = (N.project/A) 
@@ -205,8 +308,12 @@ SNAPGRAZEv2.3 = function(SnapGrazeInputs) {
   
   # For project veg class, we assume a one tier upgrade over baseline scenario
   VEGCLASS.project <- ifelse(VEGCLASS == "BARE", "MIXTURE",ifelse(VEGCLASS == "ANNUALS", "MIXTURE",ifelse(VEGCLASS == "MIXTURE", "PERENNIALS",ifelse(VEGCLASS == "PERENNIALS", "PERENNIALS", "FLAG")))) 
+  
   # We now need to calculate a new annual correction factor for BNPP
-  BNPP.Correction = ifelse(VEGCLASS.project == "ANNUALS",0.291179866899812, ifelse(VEGCLASS.project == "BARE",0.291179866899812, ifelse(VEGCLASS.project == "MIXTURE", 0.645589933449906, 1)))
+  # Manually set a few sites to 0 for BNPP 
+  BNPP.Correction =  ifelse(VEGCLASS.project == "ANNUALS", 0.285325722731738,
+                            ifelse(VEGCLASS.project == "BARE", 0.285325722731738, 
+                                   ifelse(VEGCLASS.project == "MIXTURE", 0.642662861365869, 1)))
   
   # Annual aboveground production under grazing
   ANPPest = ProdG * BNPP.Correction
@@ -220,18 +327,20 @@ SNAPGRAZEv2.3 = function(SnapGrazeInputs) {
   
   # Soil Organic Carbon (SOC) calculations.
   # Calculate Mean proportion of plant as lignin and cellulose using dominant vegetation class.
-  LIGCELL = ifelse(VEGCLASS.project == "ANNUALS",23.248751199377, ifelse(VEGCLASS.project == "BARE",23.248751199377, ifelse(VEGCLASS.project == "MIXTURE", 29.4626011324048, 35.6764510654327)))
+  LIGCELL = ifelse(VEGCLASS.project == "ANNUALS",22.7194872121575, ifelse(VEGCLASS.project == "BARE", 22.7194872121575, ifelse(VEGCLASS.project == "MIXTURE", 29.1979691387951, 35.6764510654327)))
   # Plant-derived soil carbon input in year y
-  PDSOC.project = (0.45 * (((LIGCELL/100) * ANPPest * (1 - FIRE.project)) + (((LIGCELL/100) + 0.05) * BNPPest))) * (-0.3559 + 0.3914 * log(DEPTH))
+  PDSOC.project = (0.45 * (((LIGCELL/100) * ANPPest * (1 - FIRE.project)) + (((LIGCELL/100) + 0.05) * BNPPest))) * (-0.3914+0.3559*log(DEPTH))
   # Dung-derived soil carbon input in year y
-  DDSOC.project = ((LIGCELL/100) * (CONSUMED + CONSUMED.OFF) * 0.45 * (0.4718 - 0.0009*(D))) * (-0.3559 + 0.3914 * log(DEPTH))
+  DDSOC.project = ((LIGCELL/100) * (CONSUMED + CONSUMED.OFF) * 0.45 * (0.4718 - 0.0009*(D))) * (-0.3914+0.3559*log(DEPTH))
   
   # SOCeq
   SOCeq.large.proj  = (((PDSOC.project+DDSOC.project) / (WETDAYS * (0.7 + 0.3 *(SAND/100)) * Coeff_Respiration)) + (0.579/Coeff_Respiration)) / 100 
   SOCeq.small.proj  = ((PDSOC.project+DDSOC.project) / (WETDAYS * (0.7+0.3*(SAND/100)) * exp(-10.872)))^(1/1.296) / 100   
   SOCeq.project     = pmin(SOCeq.large.proj, SOCeq.small.proj, na.rm = TRUE)
   
-
+  
+  
+  #### Year Looping ####
   # Now lets use the baseline soil equilibrium data and loop through creating calculations for each year of the project.  
   # Create an empty dataframe to store the results with a new column for each year. 
   #Add the SOCeq into the dataframe as an intermediate step
@@ -240,27 +349,62 @@ SNAPGRAZEv2.3 = function(SnapGrazeInputs) {
       WETDAYS = WETDAYS,
       SAND = SAND,
       DEPTH = DEPTH,
-      LIGCELL = LIGCELL,
-      CONSUMED = CONSUMED,
-      CONSUMED.OFF = CONSUMED.OFF,
-      ANPPest = ANPPest,
-      BNPP.Correction = BNPP.Correction,
-      BNPPest = BNPPest,
-      SOCeq.base = SOCeq.base,
+      VEGCLASS.project = VEGCLASS.project,
+      CONSUMED.proj = CONSUMED,
+      CONSUMED.OFF.proj = CONSUMED.OFF,
+      ANPPest.proj = ANPPest,
+      BNPP.Correction.proj = BNPP.Correction,
+      BNPPest.proj = BNPPest,
+      DDSOC.calib = DDSOC.calib,
+      PDSOC.calib = PDSOC.calib,
+      PDSOC.x = PDSOC.base,
+      DDSOC.x = DDSOC.base,
       PDSOC.y = PDSOC.project,
       DDSOC.y = DDSOC.project,
+      SOCeq.large.calib = SOCeq.large.calib,
+      SOCeq.small.calib = SOCeq.small.calib,
+      SOCeq.calib = SOCeq.calib,
+      SOC.dev.calib = SOC.dev.calib,
+      SOCeq.large.base = SOCeq.large.base,
+      SOCeq.small.base = SOCeq.small.base,
+      SOCeq.base = SOCeq.base,
       SOCeq.large.proj = SOCeq.large.proj,
       SOCeq.small.proj = SOCeq.small.proj,
       SOCeq.project = SOCeq.project
     )
   
+  #### * Conservative Baseline Backcasting ####
   #This creates a seq to account for years, 40 is the default project length but we expand it out to 50 to calculate the kback below.
-  year.seq <- paste0("SOC_Year", 1:YEARS)
+  year.seq <- paste0("SOC_BaseYear", 1:YEARS)
   
   # Create new columns for each year and initialize with NA
   for (i in 1:YEARS) {
-    SnapGrazeOutputs[[paste0("SOC_Year", i)]] <- NA
-    SnapGrazeOutputs[[paste0("dSOC_Year", i)]] <- NA
+    SnapGrazeOutputs[[paste0("SOC_BaseYear", i)]] <- NA
+    SnapGrazeOutputs[[paste0("dSOC_BaseYear", i)]] <- NA
+  }
+  
+  # Loop through each row
+  for (row_index in 1:nrow(SnapGrazeOutputs)) {
+    row_values <- SnapGrazeOutputs[row_index, ]
+    
+    # Loop through each year
+    for (year in 0:YEARS) {
+      if (year == 0) {
+        # Initialize the value for the first year based on Measured SOC from the Project scenario for backcasting.
+        SnapGrazeOutputs[row_index, paste0("SOC_BaseYear", year)] <- row_values["SOCeq.project"]
+      } else {
+        # Calculate the value based on the previous year's value and other parameters
+        prev_year_value <- SnapGrazeOutputs[row_index, paste0("SOC_BaseYear", year - 1)]
+        new_SOC <- prev_year_value +
+          ((row_values["PDSOC.x"] + row_values["DDSOC.x"] - pmax(
+            (row_values["WETDAYS"] * (0.7 + 0.3 * (row_values["SAND"] / 100)) * (-0.579 + Coeff_Respiration * (prev_year_value * 100))),
+            (row_values["WETDAYS"] * (0.7 + 0.3 * (row_values["SAND"] / 100)) * (exp(-10.872) * (prev_year_value * 100)^(1.296))),
+            na.rm = TRUE ) ) / 100)
+        
+        # Assign the new value to the dataframe for the current year and row
+        SnapGrazeOutputs[row_index, paste0("SOC_BaseYear", year)] <- new_SOC
+      }
+    }
   }
   
   # Loop through each row
@@ -271,19 +415,58 @@ SNAPGRAZEv2.3 = function(SnapGrazeInputs) {
     for (year in 0:YEARS) {
       if (year == 0) {
         # Initialize the value for the first year based on SOC.measured
-        SnapGrazeOutputs[row_index, paste0("SOC_Year", year)] <- row_values["SOC.measured"]
+        SnapGrazeOutputs[row_index, paste0("dSOC_BaseYear", year)] <- row_values["SOCeq.project"]
       } else {
         # Calculate the value based on the previous year's value and other parameters
-        prev_year_value <- SnapGrazeOutputs[row_index, paste0("SOC_Year", year - 1)]
+        prev_year_value <- SnapGrazeOutputs[row_index, paste0("SOC_BaseYear", year - 1)]
+        new_dSOC <- (row_values["PDSOC.x"] + row_values["DDSOC.x"] - pmax(
+          (row_values["WETDAYS"] * (0.7 + 0.3 * (row_values["SAND"] / 100)) * (-0.579 + Coeff_Respiration * (prev_year_value * 100))),
+          (row_values["WETDAYS"] * (0.7 + 0.3 * (row_values["SAND"] / 100)) * (exp(-10.872) * (prev_year_value * 100)^(1.296))),
+          na.rm = TRUE ) ) / 100
+        
+        # Assign the new value to the dataframe for the current year and row
+        SnapGrazeOutputs[row_index, paste0("dSOC_BaseYear", year)] <- new_dSOC
+      }
+    }
+  }
+
+  #### * Project Scenario ####
+  #This creates a seq to account for years, 40 is the default project length but we expand it out to 50 to calculate the kback below.
+  year.seq <- paste0("SOC_ProjYear", 1:YEARS)
+  
+  # Create new columns for each year and initialize with NA
+  for (i in 1:YEARS) {
+    SnapGrazeOutputs[[paste0("SOC_ProjYear", i)]] <- NA
+    SnapGrazeOutputs[[paste0("dSOC_ProjYear", i)]] <- NA
+  }
+  
+  # Loop through each row
+  
+  
+  for (row_index in 1:nrow(SnapGrazeOutputs)) {
+    row_values <- SnapGrazeOutputs[row_index, ]
+    
+    # Loop through each year
+    for (year in 0:YEARS) {
+      if (year == 0) {
+        # Initialize the value for the first year based on SOC.consbase_proj
+        kback_base <- log(row_values[["dSOC_BaseYear40"]] / row_values[["dSOC_BaseYear50"]]) / 10
+        SOC.consbase_proj <- row_values[["SOC.measured"]] -
+          row_values[["dSOC_BaseYear1"]] *  (exp(kback_base * 10) - 1) * exp(-kback_base * 50) / kback_base
+
+        SnapGrazeOutputs[row_index, paste0("SOC_ProjYear", year)] <- SOC.consbase_proj
+        
+      } else {
+        # Calculate the value based on the previous year's value and other parameters
+        prev_year_value <- SnapGrazeOutputs[row_index, paste0("SOC_ProjYear", year - 1)]
         new_SOC <- prev_year_value +
                         ((row_values["PDSOC.y"] + row_values["DDSOC.y"] - pmax(
                                 (row_values["WETDAYS"] * (0.7 + 0.3 * (row_values["SAND"] / 100)) * (-0.579 + Coeff_Respiration * (prev_year_value * 100))),
                                 (row_values["WETDAYS"] * (0.7 + 0.3 * (row_values["SAND"] / 100)) * (exp(-10.872) * (prev_year_value * 100)^(1.296))),
                                  na.rm = TRUE ) ) / 100)
-      ##### CHECK 0.579 #####
         
         # Assign the new value to the dataframe for the current year and row
-        SnapGrazeOutputs[row_index, paste0("SOC_Year", year)] <- new_SOC
+        SnapGrazeOutputs[row_index, paste0("SOC_ProjYear", year)] <- new_SOC
       }
     }
   }
@@ -295,63 +478,189 @@ SNAPGRAZEv2.3 = function(SnapGrazeInputs) {
     # Loop through each year
     for (year in 0:YEARS) {
       if (year == 0) {
-        # Initialize the value for the first year based on SOC.measured
-        SnapGrazeOutputs[row_index, paste0("dSOC_Year", year)] <- row_values["SOC.measured"]
+        # Initialize the value for the first year based on SOC.consbase_proj
+        
+        kback_base <- log(row_values[["dSOC_BaseYear40"]] / row_values[["dSOC_BaseYear50"]]) / 10
+        SOC.consbase_proj <- row_values[["SOC.measured"]] -
+          row_values[["dSOC_BaseYear1"]] *  (exp(kback_base * 10) - 1) * exp(-kback_base * 50) / kback_base
+        
+        SnapGrazeOutputs[row_index, paste0("dSOC_ProjYear", year)] <- SOC.consbase_proj
+        
       } else {
         # Calculate the value based on the previous year's value and other parameters
-        prev_year_value <- SnapGrazeOutputs[row_index, paste0("SOC_Year", year - 1)]
+        prev_year_value <- SnapGrazeOutputs[row_index, paste0("SOC_ProjYear", year - 1)]
         new_dSOC <- (row_values["PDSOC.y"] + row_values["DDSOC.y"] - pmax(
                         (row_values["WETDAYS"] * (0.7 + 0.3 * (row_values["SAND"] / 100)) * (-0.579 + Coeff_Respiration * (prev_year_value * 100))),
                         (row_values["WETDAYS"] * (0.7 + 0.3 * (row_values["SAND"] / 100)) * (exp(-10.872) * (prev_year_value * 100)^(1.296))),
                               na.rm = TRUE ) ) / 100
-        ##### CHECK 0.579 #####
+        
         # Assign the new value to the dataframe for the current year and row
-        SnapGrazeOutputs[row_index, paste0("dSOC_Year", year)] <- new_dSOC
+        SnapGrazeOutputs[row_index, paste0("dSOC_ProjYear", year)] <- new_dSOC
       }
     }
   }
   
+  
+  
   #Lets also tack on some mean values for dSOC to the df 
   # Find column indices for columns starting with "dSOC" but we dont need the initital columns because they are already included.
-  SnapGrazeOutputs <- subset(SnapGrazeOutputs, select = -c(dSOC_Year0,SOC_Year0))
+  SnapGrazeOutputs <- subset(SnapGrazeOutputs, select = -c(dSOC_BaseYear0,SOC_BaseYear0,dSOC_ProjYear0,SOC_ProjYear0))
 
   # Dynamically calculate the mean dSOC by row, we extended the years out beyond the 40 year project span to calculate kback, but we only want to take the mean dSOC for the length of the project (default is 40)
   #  dSOC_Year1 through dSOC_Year[max_year]
-  dSOC_columns <- grep(paste0("^dSOC_Year([1-9]$|[1-9][0-9]$|", ifelse(SnapGrazeInputs$Years[1] >= 10, paste0("1-", SnapGrazeInputs$Years[1]), SnapGrazeInputs$Years[1]), "$)"), 
+  dSOC_BaseColumns <- grep(paste0("^dSOC_BaseYear([1-9]$|[1-9][0-9]$|", ifelse(SnapGrazeInputs$Years[1] >= 10, paste0("1-", SnapGrazeInputs$Years[1]), SnapGrazeInputs$Years[1]), "$)"), 
                        names(SnapGrazeOutputs))
-  dSOC_columns <- dSOC_columns[names(SnapGrazeOutputs)[dSOC_columns] %in% paste0("dSOC_Year", 1:SnapGrazeInputs$Years[1])]
+  dSOC_BaseColumns <- dSOC_BaseColumns[names(SnapGrazeOutputs)[dSOC_BaseColumns] %in% paste0("dSOC_BaseYear", 1:SnapGrazeInputs$Years[1])]
+  
+  dSOC_ProjColumns <- grep(paste0("^dSOC_ProjYear([1-9]$|[1-9][0-9]$|", ifelse(SnapGrazeInputs$Years[1] >= 10, paste0("1-", SnapGrazeInputs$Years[1]), SnapGrazeInputs$Years[1]), "$)"), 
+                       names(SnapGrazeOutputs))
+  dSOC_ProjColumns <- dSOC_ProjColumns[names(SnapGrazeOutputs)[dSOC_ProjColumns] %in% paste0("dSOC_ProjYear", 1:SnapGrazeInputs$Years[1])]
+  
   # Calculate row-wise average for dSOC columns
-  SnapGrazeOutputs$Mean_dSOC <- rowMeans(SnapGrazeOutputs[, dSOC_columns], na.rm = TRUE)
+  SnapGrazeOutputs$Mean_dSOC_base <- rowMeans(SnapGrazeOutputs[, dSOC_BaseColumns], na.rm = TRUE)
+  SnapGrazeOutputs$Mean_dSOC_proj <- rowMeans(SnapGrazeOutputs[, dSOC_ProjColumns], na.rm = TRUE)
    
   # New Technique of using half life calculations
   SnapGrazeOutputs <- SnapGrazeOutputs %>%
-    mutate( Mean_CO2e         = Mean_dSOC  * (44/12),  # This uses the mean annual dSOC from the first 40 years
-            k                 = log(dSOC_Year1  / dSOC_Year40) / 40, 
-            kback             = log(dSOC_Year40 / dSOC_Year50) / 10 , 
-            SOC.consbase      = SOC.measured + dSOC_Year50 * exp(kback * 10),
-            Dyears            = 2 * log(1-(k * 0.5)*(SOCeq.project - SOC.consbase) / dSOC_Year1) / -k,
-            CO2e_removals     = (44/12) * (SOCeq.project - SOC.consbase) / Dyears,  # This is annual removals calculated using the 1/2 life approach
-            Mean_CO2e         = Mean_dSOC  * (44/12)  # This uses the mean annual dSOC from the first 40 years
+    mutate( k_base                 = log(dSOC_BaseYear1  / dSOC_BaseYear40) / 40, 
+            k_proj                 = log(dSOC_ProjYear1  / dSOC_ProjYear40) / 40, 
+            kback_base             = log(dSOC_BaseYear40 / dSOC_BaseYear50) / 10, 
+            kback_proj             = log(dSOC_ProjYear40 / dSOC_ProjYear50) / 10, 
+            SOC.consbase_base      = SOCeq.project + dSOC_BaseYear50 * exp(kback_base * 10),
+            SOC.consbase_proj      = SOC.measured - dSOC_BaseYear1 * (exp(kback_base*(10))-1)*exp(-kback_base*50)/kback_base,
+            Dyears_base            = 2 * log(1-(k_base * 0.5)*(SOCeq.base - SOC.consbase_base) / dSOC_BaseYear1) / -k_base,
+            Dyears_proj            = 2 * log(1-(k_proj * 0.5)*(SOCeq.project - SOC.consbase_proj) / dSOC_ProjYear1) / -k_proj,
+            CO2e_removal_base      = (44/12) * (SOCeq.base - SOC.consbase_base) / Dyears_base,  # This is annual removals calculated using the 1/2 life approach
+            CO2e_removal_proj      = (44/12) * (SOCeq.project - SOC.consbase_proj) / Dyears_proj,  # This is annual removals calculated using the 1/2 life approach
+            Mean_dSOC_base         = Mean_dSOC_base,  # This uses the mean annual dSOC from the first 40 years
+            Mean_dSOC_proj         = Mean_dSOC_proj,   # This uses the mean annual dSOC from the first 40 years
+            Mean_CO2e_base         = Mean_dSOC_base  * (44/12),  # This uses the mean annual dSOC from the first 40 years
+            Mean_CO2e_proj         = Mean_dSOC_proj  * (44/12)  # This uses the mean annual dSOC from the first 40 years
             )
 
   # Print the updated dataframe with calculated values for each year
   print(SnapGrazeOutputs)
   # Convert SOC vector to dataframe and transpose it
   return(SnapGrazeOutputs)
-}
+      }
+    
+# Run function
 SNAPGRAZEv23.df <- SNAPGRAZEv2.3(SnapGrazeInputs)
+
 names(SNAPGRAZEv23.df)
+SNAPGRAZEv23.df$DDSOC.calib
+SNAPGRAZEv23.df$Mean_dSOC_proj
+SNAPGRAZEv23.df$Mean_dSOC_base
+SNAPGRAZEv23.df$Mean_CO2e_proj
+SNAPGRAZEv23.df$k_proj
 
-# Export as an excel workbook, so different sheets can be added with results tables.
+
+# Pull current/calibration tab columns 
+Calibration_cols <- c(
+  names(SNAPGRAZEv23.df)[1:21],    # first 28 columns
+  "PDSOC.calib", "DDSOC.calib",            # specific base columns
+  grep("calib|Calib", names(SNAPGRAZEv23.df), value = TRUE) # anything with "calib"
+)
+Calibration_cols <- setdiff(Calibration_cols, c("FIRE.project", "Animals.project",  "Rotations.project", 
+                                                "Pasture.project", "SOC.consbase_proj"))
+
+# Pull conservative baseline columns 
+baseline_cols <- c(
+  names(SNAPGRAZEv23.df)[1:21],    # first 28 columns
+  "PDSOC.x", "DDSOC.x", "SOCeq.project",           # specific base columns
+  grep("base|Base", names(SNAPGRAZEv23.df), value = TRUE) # anything with "base" or "Base"
+)
+baseline_cols <- setdiff(baseline_cols, c("FIRE.project", "Animals.curr", "Pasture.project", "Rotations.project" ,
+                                          "SOC.consbase_proj"))
+
+# Pull project columns
+project_cols <- c(
+  names(SNAPGRAZEv23.df)[1:26],    # first 26 columns
+  "PDSOC.y", "DDSOC.y",            # specific project columns
+  grep("proj|Proj|project", names(SNAPGRAZEv23.df), value = TRUE) # anything with proj/project
+)
+project_cols <- setdiff(project_cols, c("FIRE.curr", "Animals.curr", "Pasture.curr", "Rotations.curr", "VegClass",
+                                        "SOCeq.base"))
+
+
+# --- Subset data ---
+SNAPGRAZE_Calibration<- SNAPGRAZEv23.df[, unique(Calibration_cols)]
+SNAPGRAZE_Baseline <- SNAPGRAZEv23.df[, unique(baseline_cols)]
+SNAPGRAZE_Project  <- SNAPGRAZEv23.df[, unique(project_cols)]
+
+
+
+# --- Create workbook and add worksheets ---
 SNAPGRAZE.wb <- createWorkbook()
-addWorksheet(SNAPGRAZE.wb, "SNAPGRAZE_data")
-writeData(SNAPGRAZE.wb, "SNAPGRAZE_data", SNAPGRAZEv23.df)
-saveWorkbook(SNAPGRAZE.wb, paste0(out_dir, "SNAPGRAZEv23_", Project_initials, "_", date, ".xlsx"), overwrite = TRUE)
+addWorksheet(SNAPGRAZE.wb, "SNAPGRAZE_Calibration")
+writeData(SNAPGRAZE.wb, "SNAPGRAZE_Calibration", SNAPGRAZE_Calibration)
+addWorksheet(SNAPGRAZE.wb, "SNAPGRAZE_ConservativeBaseline")
+writeData(SNAPGRAZE.wb, "SNAPGRAZE_ConservativeBaseline", SNAPGRAZE_Baseline)
+addWorksheet(SNAPGRAZE.wb, "SNAPGRAZE_Project")
+writeData(SNAPGRAZE.wb, "SNAPGRAZE_Project", SNAPGRAZE_Project)
 
+# --- Define a style for highlighting ---
+highlightStyle.calib   <- createStyle(fontColour = "black",  fgFill = "#C6EFCE",textDecoration = "Bold" )
+highlightStyle.base   <- createStyle(fontColour = "black",  fgFill = "skyblue2",textDecoration = "Bold" )
+highlightStyle.proj   <- createStyle(fontColour = "black",  fgFill = "goldenrod3",textDecoration = "Bold" )
+
+# --- Find the column index for Mean_CO2e_proj ---
+Calib_cols_to_highlight <- which(names(SNAPGRAZE_Calibration) %in% c("SOCeq.calib","SOC.dev.calib"))
+Base_cols_to_highlight <- which(names(SNAPGRAZE_Baseline) %in% c("SOCeq.base","k_base","kback_base","SOC.consbase_base","Dyears_base", 
+                                                                 "CO2e_removal_base","Mean_dSOC_base","Mean_CO2e_base"))
+Proj_cols_to_highlight <- which(names(SNAPGRAZE_Project) %in% c("SOCeq.project","k_proj", "kback_proj","SOC.consbase_proj",
+                                                                "Dyears_proj",     "CO2e_removal_proj", "Mean_dSOC_proj","Mean_CO2e_proj"))
+Base_cols_to_highlight_Proj <- which(names(SNAPGRAZE_Baseline) %in% c("SOCeq.project"))
+
+
+# --- Apply the style to the entire column ---
+addStyle(
+  wb = SNAPGRAZE.wb,
+  sheet = "SNAPGRAZE_Calibration",
+  style = highlightStyle.calib,
+  rows = 1:(nrow(SNAPGRAZE_Calibration) + 1), # +1 for header
+  cols = Calib_cols_to_highlight,
+  gridExpand = TRUE
+)
+addStyle(
+  wb = SNAPGRAZE.wb,
+  sheet = "SNAPGRAZE_ConservativeBaseline",
+  style = highlightStyle.base,
+  rows = 1:(nrow(SNAPGRAZE_Baseline) + 1), # +1 for header
+  cols = Base_cols_to_highlight,
+  gridExpand = TRUE
+)
+addStyle(
+  wb = SNAPGRAZE.wb,
+  sheet = "SNAPGRAZE_ConservativeBaseline",
+  style = highlightStyle.proj,
+  rows = 1:(nrow(SNAPGRAZE_Baseline) + 1), # +1 for header
+  cols = Base_cols_to_highlight_Proj,
+  gridExpand = TRUE
+)
+addStyle(
+  wb = SNAPGRAZE.wb,
+  sheet = "SNAPGRAZE_Project",
+  style = highlightStyle.proj,
+  rows = 1:(nrow(SNAPGRAZE_Project) + 1), # +1 for header
+  cols = Proj_cols_to_highlight,
+  gridExpand = TRUE
+)
+
+
+# --- Save workbook ---
+saveWorkbook(
+  SNAPGRAZE.wb,
+  paste0(out_dir, "SNAPGRAZEv23_", Project_initials, "_", date, ".xlsx"),
+  overwrite = TRUE
+)
+
+
+names(SNAPGRAZE_Calibration)
 
 #### * Summary Table #### 
-Removals.mean <- mean(SNAPGRAZEv23.df$Mean_CO2e, na.rm = T)
-Removals.se <- ifelse(is.na(se(SNAPGRAZEv23.df$Mean_CO2e, na.rm = T)), "Sample size = 1", se(SNAPGRAZEv23.df$Mean_CO2e, na.rm = T))
+Removals.mean <- mean(SNAPGRAZEv23.df$Mean_CO2e_proj, na.rm = T)
+Removals.se <- ifelse(is.na(se(SNAPGRAZEv23.df$Mean_CO2e_proj, na.rm = T)), "Sample size = 1", se(SNAPGRAZEv23.df$Mean_CO2e_proj, na.rm = T))
 Removals.Project <- prettyNum(Removals.mean * SNAPGRAZEv23.df$`Project Area`[1],  big.mark = ",", scientific = FALSE )
 
 Statistic        <- c('Removals.mean', 'Removals.se', 'Removals.Project')
@@ -362,9 +671,9 @@ SNAPGRAZEv23_Removals.df <- data.frame(Statistic = Statistic, Values = Value.PRO
 SNAPGRAZEv23_CommunityRemovals.df <- SNAPGRAZEv23.df %>%
   group_by(Community) %>%
   summarise(
-    n                   = sum(!is.na(CO2e_removals)),  # Number of sites in each strata that are not NA
-    mean_CO2e_removals  = mean(CO2e_removals, na.rm=TRUE),  # Mean removals tonnes CO2e ha-1 yr-1 by strata
-    sd_CO2e_removals    = sd(CO2e_removals, na.rm=TRUE),        # sd removals tonnes CO2e ha-1 yr-1 by strata
+    n                   = sum(!is.na(CO2e_removal_proj)),  # Number of sites in each strata that are not NA
+    mean_CO2e_removals  = mean(CO2e_removal_proj, na.rm=TRUE),  # Mean removals tonnes CO2e ha-1 yr-1 by strata
+    sd_CO2e_removals    = sd(CO2e_removal_proj, na.rm=TRUE),        # sd removals tonnes CO2e ha-1 yr-1 by strata
     Uncertainty.perc    = ((qnorm(0.95)*sd_CO2e_removals/(n^0.5))/mean_CO2e_removals)*100,
     CommArea_ha         = mean(`Project Area`, na.rm=TRUE),
     TotalRemovals_tCO2e = CommArea_ha * mean_CO2e_removals, 
@@ -391,6 +700,8 @@ addWorksheet(SNAPGRAZE.wb, "Removals_StrataSummary")
 writeData(SNAPGRAZE.wb, "Removals_StrataSummary", SNAPGRAZEv23_CommunityRemovals.df)
 saveWorkbook(SNAPGRAZE.wb, paste0(out_dir, "SNAPGRAZEv23_", Project_initials, "_", date, ".xlsx"), overwrite = TRUE)
 
+2+2
+
 
 
 #### MONTE CARLO ####
@@ -411,10 +722,10 @@ set.seed(1234)
 SnapGrazeInputs <- SnapGrazeInputs %>%
   rename(
     A                  = "Project Area",      # Size of the area that will be in the project.
-    VEGCLASS           = "VegClass",          # Dropdown selection of possibilities for dominant vegetation class as baseline
-    N.base             = "Animals.base",      # Number of animals in the baseline scenario
-    n.base             = "Pasture.base",      # Number of pastures in the baseline scenario
-    ROTATIONS.base     = "Rotations.base",    # Number of rotations in the baseline scenario
+    VEGCLASS           = "VegClass",          # Dropdown selection of possibilities for dominant vegetation class as surveyed condition
+    N.curr             = "Animals.curr",      # Number of animals in the current scenario
+    n.curr             = "Pasture.curr",      # Number of pastures in the current scenario
+    ROTATIONS.curr     = "Rotations.curr",    # Number of rotations in the current scenario
     ROTATIONS.project  = "Rotations.project", # Number of rotations in the project scenario
     N.project          = "Animals.project",   # Number of animals in the project scenario
     n.project          = "Pasture.project"    # Number of pastures in the project scenario
@@ -458,32 +769,32 @@ for (site in 1:nrow(SnapGrazeInputs)) {
     # Generate random parameter coefficients 
     # The coefficients for the following parameters are taken from `SNAPGRAZE Values Parameters Coefficients Uncertainty` 
     # The first number is coefficient, the second is the uncertainty (SE was used in this case because we care about variation around the mean) 
-    r                 <- rnorm(1, 0.033, 0.004)    #  From Calibration tab is Carbon Calculation Spreadsheet. Default: rnorm(1, 0.036, 0.004)
+    r                 <- rnorm(1, 0.035, 0.004)    #  From Calibration tab is Carbon Calculation Spreadsheet. SE is not changed. Default: rnorm(1, 0.036, 0.004)
     G.MAT.B0          <- rnorm(1, 22.993, 1.727)
-    G.MAT.B1          <- rnorm(1, 0.91, 0.099)     # From Calibration tab is Carbon Calculation Spreadsheet. Default: rnorm(1, 0.942, 0.099) 
+    G.MAT.B1          <- rnorm(1, 0.685, 0.099)     # From Calibration tab is Carbon Calculation Spreadsheet. SE is not changed. Default: rnorm(1, 0.942, 0.099) 
     G.MAP.B0          <- rnorm(1, 0.073, 0.014)
     Cg.B0             <- rnorm(1, 5300, 0)
     Cg.B1             <- rnorm(1, 770, 0)
-    LigCell.Annual    <- rnorm(1, 23.248751199377, 1.55999049699112)
-    LigCell.Mixture   <- rnorm(1, 29.4626011324048, 1.55999049699112)
+    LigCell.Annual    <- rnorm(1, 22.71948721, 0.926915587277186)
+    LigCell.Mixture   <- rnorm(1, 29.1979691387951, 0.727679109087914)
     LigCell.Perennial <- rnorm(1, 35.6764510654327, 1.42118061262896)
     ANPPmax.Sand.B0   <- rnorm(1, 1.33, 0.05)
     ANPPmax.Sand.B1   <- rnorm(1, 0.0075, 0.0008)
     ANPPmax.MAP.B0    <- rnorm(1, 0.718, 0.145)
     ANPPmax.MAT.B0    <- rnorm(1, 25.18, 6.767)
     ANPPmax.MAT.B1    <- rnorm(1, 12.039, 3.533)
-    APC.Annual        <- rnorm(1, 0.291179866899812, 0.155142849652921)
-    APC.Mixture       <- rnorm(1, 0.645589933449906, 0.155142849652921)
+    APC.Annual        <- rnorm(1, 0.285325722731738, 0.156588916550256)
+    APC.Mixture       <- rnorm(1, 0.642662861365869, 0.156588916550256)
     APC.Perennial     <- rnorm(1, 1, 0)
     BNPP.MAP.B0       <- rnorm(1, 0.602, 0.183)
     BNPP.MAT.B0       <- rnorm(1, 5.888, 3.123)
     BNPP.MAT.B1       <- rnorm(1, 0.00038, 0.00022)
     WETDAYS.Bo        <- rnorm(1, 0.025, 0.033)
-    WETDAYS.B1        <- rnorm(1, 0.00051, 0.00006) # From Calibration tab is Carbon Calculation Spreadsheet. Default: rnorm(1, 0.00043, 0.00006)
+    WETDAYS.B1        <- rnorm(1, 0.000415, 0.00006) # From Calibration tab is Carbon Calculation Spreadsheet.SE is not changed. Default: rnorm(1, 0.00043, 0.00006)
     SOC.B0            <- rnorm(1, -10.872, 0) 
     SOC.B1            <- rnorm(1, 1.296, 0)
     SOC.B2            <- rnorm(1, 0.579, 0.45)
-    SOC.B3            <- rnorm(1, 0.0005, 0.00007) # From Calibration tab is Carbon Calculation Spreadsheet. Default: rnorm(1, 0.00044,0.00007)
+    SOC.B3            <- rnorm(1, 0.000415, 0.00007) # From Calibration tab is Carbon Calculation Spreadsheet.SE is not changed. Default: rnorm(1, 0.00044,0.00007)
     
     # These calculations also generate a value for temperature and precipitation
     # First we need to get the data for MAP and MAT from the Clim.df that matches the community for the community in the current iteration
@@ -555,8 +866,13 @@ for (site in 1:nrow(SnapGrazeInputs)) {
     
     # For project veg class, we assume a one tier upgrade over baseline scenario
     VEGCLASS.project <- ifelse(site_data$VEGCLASS == "BARE", "MIXTURE",ifelse(site_data$VEGCLASS == "ANNUALS", "MIXTURE",ifelse(site_data$VEGCLASS == "MIXTURE", "PERENNIALS",ifelse(site_data$VEGCLASS == "PERENNIALS", "PERENNIALS", "FLAG")))) 
-    # We now need to calculate a new annual correction factor for BNPP
-    BNPP.Correction = ifelse(VEGCLASS.project == "ANNUALS", APC.Annual, ifelse(VEGCLASS.project == "BARE",APC.Annual, ifelse(VEGCLASS.project == "MIXTURE",  APC.Mixture, APC.Perennial )))
+   
+     # We now need to calculate a new annual correction factor for BNPP
+    # Manually set a few sites to 0 for BNPP 
+    BNPP.Correction =    ifelse(VEGCLASS.project == "ANNUALS", APC.Annual, 
+                                    ifelse(VEGCLASS.project == "BARE",APC.Annual, 
+                                           ifelse(VEGCLASS.project == "MIXTURE",  
+                                                  APC.Mixture, APC.Perennial )))
     
     # Annual aboveground production under grazing
     ANPPest = ProdG * BNPP.Correction
@@ -573,16 +889,16 @@ for (site in 1:nrow(SnapGrazeInputs)) {
     LIGCELL = ifelse(VEGCLASS.project == "ANNUALS", LigCell.Annual, ifelse(VEGCLASS.project == "BARE",LigCell.Annual, ifelse(VEGCLASS.project == "MIXTURE", LigCell.Mixture, LigCell.Perennial)))
     
     # Plant-derived soil carbon input 
-    PDSOC.project = (0.45 * (((LIGCELL/100) * ANPPest * (1 - site_data$FIRE.project)) + (((LIGCELL/100) + 0.05) * BNPPest))) * (-0.3559 + 0.3914 * log(site_data$DEPTH))
+    PDSOC.project = (0.45 * (((LIGCELL/100) * ANPPest * (1 - site_data$FIRE.project)) + (((LIGCELL/100) + 0.05) * BNPPest))) * (-0.3914 + 0.3559 * log(site_data$DEPTH))
     # Dung-derived soil carbon input 
-    DDSOC.project = ((LIGCELL/100) * (CONSUMED + CONSUMED.OFF) * 0.45 * (0.4718 - 0.0009*(D))) * (-0.3559 + 0.3914 * log(site_data$DEPTH))
+    DDSOC.project = ((LIGCELL/100) * (CONSUMED + CONSUMED.OFF) * 0.45 * (0.4718 - 0.0009*(D))) * (-0.3914 + 0.3559 * log(site_data$DEPTH))
     
     # WETDAYS (eq 19)
     WETDAYS = (WETDAYS.B1 * MAP.strata - WETDAYS.Bo) * G
     
     # SOCeq
-    SOCeq.large.proj  = (((PDSOC.project+DDSOC.project) / (WETDAYS * (0.7 + 0.3 *(site_data$SAND/100)) *  SOC.B3)) + (SOC.B2/ SOC.B3)) / 100 
-    SOCeq.small.proj  = ((PDSOC.project+DDSOC.project) / (WETDAYS * (0.7+0.3*(site_data$SAND/100)) * exp(SOC.B0)))^(1/SOC.B1) / 100  # technically the ms states SOC <4600 g/m2
+    SOCeq.large.proj  = (((PDSOC.project+DDSOC.project) / (WETDAYS * (0.7 + 0.3 * (site_data$SAND/100)) *  SOC.B3)) + (SOC.B2/ SOC.B3)) / 100 
+    SOCeq.small.proj  = ((PDSOC.project+DDSOC.project) / (WETDAYS * (0.7 + 0.3 * (site_data$SAND/100)) * exp(SOC.B0)))^(1/SOC.B1) / 100  # technically the ms states SOC <4600 g/m2
     # this looks at the two SOC calculations and selects the lower one, which is the one using the correct piece wise curve
     SOCeq.project       = pmin(SOCeq.large.proj, SOCeq.small.proj, na.rm = TRUE)
 
