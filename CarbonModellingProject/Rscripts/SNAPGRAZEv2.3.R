@@ -5,7 +5,7 @@
 # script metadata ==========================================================================================
 # Description: 
     # This version of SNAPGRAZE is based on the Rithie et al. (2020) manuscript and updated with coefficients from
-    # the Calibration using a subset of KRCP data in the `KRCP Carbon Calculations v6 Sept 22 2025.xlsx` calibration tab.
+    # the Calibration using a subset of Project XXX data in the `XXX Carbon Calculations .xlsx`.
     # Citation: Ritchie ME (2020) Grazing management, forage production and soil carbon dynamics. Resources 9(4): 49
 # Script Author: Mark Burton
 # Script Date (last update): 2025-10-03
@@ -998,3 +998,4 @@ writeData(SNAPGRAZE.wb, "MonteCarlo_Site", MC.Site)
 saveWorkbook(SNAPGRAZE.wb, paste0(out_dir, "SNAPGRAZEv23_", Project_initials, "_", date, ".xlsx"), overwrite = TRUE)
 
 2+2
+
