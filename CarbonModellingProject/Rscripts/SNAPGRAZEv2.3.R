@@ -20,14 +20,14 @@
 # These are not calculated in this script but input from a separate analysis.
 
 
-# * Coeff.Resp.Temp: Default is 0.94198
-Coeff.Resp.Temp <-	0.685  # From Calibration tab is Carbon Calculation Spreadsheet.
-# * Coeff.wetsoil: default is 0.00043
-Coeff.wetsoil   <- 0.000415 # From Calibration tab in Carbon Calculation Spreadsheet.
+# * Coeff.Resp.Temp: Default is 0.942
+Coeff.Resp.Temp <-	0.942  # From Calibration tab is Carbon Calculation Spreadsheet.
+# * Coeff.wetsoil: default is 0.00044
+Coeff.wetsoil   <- 0.00044# From Calibration tab in Carbon Calculation Spreadsheet.
 # * Coeff_Respiration: default is 0.00044
-Coeff_Respiration <-0.000415 # From Calibration tab in Carbon Calculation Spreadsheet.
+Coeff_Respiration <- 0.00044 # From Calibration tab in Carbon Calculation Spreadsheet.
 # RGRmax - This is a required input in the input file, so changing here will not impact calculations
-# * 0.035 used here but default is 0.036
+# * Default is 0.036
 
 
 
@@ -790,7 +790,7 @@ for (site in 1:nrow(SnapGrazeInputs)) {
     BNPP.MAT.B0       <- rnorm(1, 5.888, 3.123)
     BNPP.MAT.B1       <- rnorm(1, 0.00038, 0.00022)
     WETDAYS.Bo        <- rnorm(1, 0.025, 0.033)
-    WETDAYS.B1        <- rnorm(1, 0.000415, 0.00006) # From Calibration tab is Carbon Calculation Spreadsheet.SE is not changed. Default: rnorm(1, 0.00043, 0.00006)
+    WETDAYS.B1        <- rnorm(1, 0.000415, 0.00006) # From Calibration tab is Carbon Calculation Spreadsheet.SE is not changed. Default: rnorm(1, 0.00044, 0.00006)
     SOC.B0            <- rnorm(1, -10.872, 0) 
     SOC.B1            <- rnorm(1, 1.296, 0)
     SOC.B2            <- rnorm(1, 0.579, 0.45)
@@ -998,4 +998,5 @@ writeData(SNAPGRAZE.wb, "MonteCarlo_Site", MC.Site)
 saveWorkbook(SNAPGRAZE.wb, paste0(out_dir, "SNAPGRAZEv23_", Project_initials, "_", date, ".xlsx"), overwrite = TRUE)
 
 2+2
+
 
